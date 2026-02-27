@@ -1,7 +1,7 @@
 import { FancyButton } from "@pixi/ui";
 import { animate } from "motion";
 import type { AnimationPlaybackControls } from "motion/react";
-import { Assets, Texture } from "pixi.js";
+import { Assets } from "pixi.js";
 import type { Ticker } from "pixi.js";
 import { Container } from "pixi.js";
 import type { Spritesheet } from "pixi.js";
@@ -36,6 +36,8 @@ export class MainScreen extends Container {
   private playSmallWinButton: FancyButton;
   private playBigWinButton: FancyButton;
   private playMegaWinButton: FancyButton;
+  private playFreezeButton: FancyButton;
+  private playShatterButton: FancyButton;
   private clearVfxButton: FancyButton;
   private assetSelectorTitle: Label;
   private selectedAssetLabel: Label;
@@ -50,7 +52,6 @@ export class MainScreen extends Container {
   private stageWidth = 1280;
   private stageHeight = 720;
   private vfxAssetOptions: string[];
-  private dominantColorCache = new Map<string, number>();
   private selectedVfxIndex = 0;
   private rotateEnabled = false;
   private popEnabled = false;
@@ -236,6 +237,28 @@ export class MainScreen extends Container {
     );
     this.addChild(this.playMegaWinButton);
 
+    this.playFreezeButton = new Button({
+      text: "Freeze",
+      width: 160,
+      height: 80,
+      fontSize: 24,
+    });
+    this.playFreezeButton.onPress.connect(() =>
+      this.winVfx.playFreeze(this.getSpawnCenterX(), this.getSpawnCenterY()),
+    );
+    this.addChild(this.playFreezeButton);
+
+    this.playShatterButton = new Button({
+      text: "Shatter",
+      width: 160,
+      height: 80,
+      fontSize: 24,
+    });
+    this.playShatterButton.onPress.connect(() =>
+      this.winVfx.playShatter(this.getSpawnCenterX(), this.getSpawnCenterY()),
+    );
+    this.addChild(this.playShatterButton);
+
     this.clearVfxButton = new Button({
       text: "Clear VFX",
       width: 160,
@@ -244,6 +267,8 @@ export class MainScreen extends Container {
     });
     this.clearVfxButton.onPress.connect(() => this.winVfx.clear());
     this.addChild(this.clearVfxButton);
+
+    this.syncSelectedAssetTheme();
 
     this.updateEffectStateLabel();
   }
@@ -323,7 +348,11 @@ export class MainScreen extends Container {
     this.playBigWinButton.y = height - 170;
     this.playMegaWinButton.x = 470;
     this.playMegaWinButton.y = height - 170;
-    this.clearVfxButton.x = 640;
+    this.playFreezeButton.x = 640;
+    this.playFreezeButton.y = height - 170;
+    this.playShatterButton.x = 810;
+    this.playShatterButton.y = height - 170;
+    this.clearVfxButton.x = 980;
     this.clearVfxButton.y = height - 170;
 
     this.stageWidth = width;
@@ -355,6 +384,8 @@ export class MainScreen extends Container {
       this.playSmallWinButton,
       this.playBigWinButton,
       this.playMegaWinButton,
+      this.playFreezeButton,
+      this.playShatterButton,
       this.clearVfxButton,
     ];
 
@@ -404,7 +435,7 @@ export class MainScreen extends Container {
 
   private getSelectedAssetLabelText(): string {
     const selectedAsset = this.getSelectedAssetName();
-    const tint = this.getDominantColorForAsset(selectedAsset);
+    const tint = this.getCurrentAssetTint(selectedAsset);
     if (typeof tint !== "number") {
       return `${selectedAsset}\nTint: unavailable`;
     }
@@ -419,7 +450,7 @@ export class MainScreen extends Container {
     const optionsCount = this.vfxAssetOptions.length;
     this.selectedVfxIndex =
       (this.selectedVfxIndex + step + optionsCount) % optionsCount;
-    this.selectedAssetLabel.text = this.getSelectedAssetLabelText();
+    this.syncSelectedAssetTheme();
   }
 
   private toggleEffect(effect: "rotate" | "pop" | "pulse"): void {
@@ -465,9 +496,7 @@ export class MainScreen extends Container {
   }
 
   private addLogoToStage(): void {
-    const sampledTint = this.getDominantColorForAsset(
-      this.getSelectedAssetName(),
-    );
+    const sampledTint = this.getCurrentAssetTint();
     const logo = new Logo({
       ...this.getSpawnOptions(),
       textureName: "logo-white.svg",
@@ -479,99 +508,19 @@ export class MainScreen extends Container {
     this.stageLogos.push(logo);
   }
 
-  private getDominantColorForAsset(assetName: string): number | undefined {
+  private getCurrentAssetTint(
+    assetName = this.getSelectedAssetName(),
+  ): number | undefined {
     if (!assetName || assetName === "No VFX assets loaded") {
       return undefined;
     }
 
-    const cachedColor = this.dominantColorCache.get(assetName);
-    if (typeof cachedColor === "number") {
-      return cachedColor;
-    }
+    return this.winVfx.setThemeFromTexture(assetName);
+  }
 
-    if (typeof document === "undefined") {
-      return undefined;
-    }
-
-    const texture = Texture.from(assetName);
-    const sourceCandidate =
-      (texture.source as { resource?: { source?: unknown }; source?: unknown })
-        .resource?.source ?? (texture.source as { source?: unknown }).source;
-
-    if (
-      !sourceCandidate ||
-      typeof sourceCandidate !== "object" ||
-      !("width" in sourceCandidate) ||
-      !("height" in sourceCandidate)
-    ) {
-      return undefined;
-    }
-
-    const sourceWidth = Number(sourceCandidate.width);
-    const sourceHeight = Number(sourceCandidate.height);
-    if (!Number.isFinite(sourceWidth) || !Number.isFinite(sourceHeight)) {
-      return undefined;
-    }
-
-    const canvas = document.createElement("canvas");
-    const sampleSize = 32;
-    canvas.width = sampleSize;
-    canvas.height = sampleSize;
-    const context = canvas.getContext("2d", { willReadFrequently: true });
-
-    if (!context) {
-      return undefined;
-    }
-
-    const frame = texture.frame;
-    const sx = Math.max(0, Math.floor(frame.x));
-    const sy = Math.max(0, Math.floor(frame.y));
-    const sw = Math.max(1, Math.min(sourceWidth - sx, Math.floor(frame.width)));
-    const sh = Math.max(
-      1,
-      Math.min(sourceHeight - sy, Math.floor(frame.height)),
-    );
-
-    context.clearRect(0, 0, sampleSize, sampleSize);
-    context.drawImage(
-      sourceCandidate as CanvasImageSource,
-      sx,
-      sy,
-      sw,
-      sh,
-      0,
-      0,
-      sampleSize,
-      sampleSize,
-    );
-
-    const imageData = context.getImageData(0, 0, sampleSize, sampleSize);
-    let red = 0;
-    let green = 0;
-    let blue = 0;
-    let totalWeight = 0;
-
-    for (let index = 0; index < imageData.data.length; index += 4) {
-      const alpha = imageData.data[index + 3] / 255;
-      if (alpha <= 0.05) continue;
-
-      red += imageData.data[index] * alpha;
-      green += imageData.data[index + 1] * alpha;
-      blue += imageData.data[index + 2] * alpha;
-      totalWeight += alpha;
-    }
-
-    if (totalWeight <= 0) {
-      return undefined;
-    }
-
-    const r = Math.round(red / totalWeight);
-    const g = Math.round(green / totalWeight);
-    const b = Math.round(blue / totalWeight);
-    const packedColor = (r << 16) | (g << 8) | b;
-    this.dominantColorCache.set(assetName, packedColor);
-
-    return packedColor;
+  private syncSelectedAssetTheme(): void {
+    this.getCurrentAssetTint();
+    this.selectedAssetLabel.text = this.getSelectedAssetLabelText();
   }
 
   private getSpawnCenterX(): number {

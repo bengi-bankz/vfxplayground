@@ -17,7 +17,11 @@ If you want the same logo tint behavior, also keep your logo spawn logic using `
 ## What this gives you
 
 - Layered VFX container stack (`bgFlash`, `radialLight`, `burst`, `coinShard`, `foregroundSpark`, `uiOverlay`)
-- Reusable animation presets (`small`, `big`, `mega`)
+- Reusable animation presets (`small`, `big`, `mega`, `freeze`, `shatter`)
+- Built-in animation phases per preset:
+  - anticipation wobble
+  - impact ring burst
+  - settle glow loop
 - Pooled particle emitters
 - Color theming from selected texture (dominant color sampling + cache)
 
@@ -34,6 +38,12 @@ Inside `WinVFXController`:
 - `setThemeColor(color: number): void`
   - Direct override if you already know the color
 
+- `playFreeze(centerX: number, centerY: number): void`
+  - Triggers freeze-style preset and pauses emitter motion briefly
+
+- `playShatter(centerX: number, centerY: number): void`
+  - Triggers high-impact shatter preset
+
 ## Minimal Pixi-Svelte usage (copy/paste)
 
 ```svelte
@@ -42,13 +52,18 @@ Inside `WinVFXController`:
   import { Application, Assets, Ticker } from "pixi.js";
   import {
     WinVFXController,
+    BIG_WIN_PRESET,
+    FREEZE_WIN_PRESET,
     MEGA_WIN_PRESET,
+    SHATTER_WIN_PRESET,
+    SMALL_WIN_PRESET,
   } from "./vfxPresetIndex";
 
   let host: HTMLDivElement;
   let app: Application;
   let winVfx: WinVFXController;
   let ticker: Ticker;
+  let onTick: ((t: Ticker) => void) | undefined;
 
   const selectedTextureName = "particle (3).png";
 
@@ -78,20 +93,29 @@ Inside `WinVFXController`:
     console.log("Active VFX theme color:", sampled.toString(16));
 
     ticker = app.ticker;
-    ticker.add((t) => {
+    onTick = (t) => {
       winVfx.update(t.deltaMS);
-    });
+    };
+    ticker.add(onTick);
 
     const cx = app.screen.width * 0.5;
     const cy = app.screen.height * 0.5;
+
+    // Use whichever preset/event your game triggers:
+    winVfx.playPreset(SMALL_WIN_PRESET, cx, cy);
+    winVfx.playPreset(BIG_WIN_PRESET, cx, cy);
     winVfx.playPreset(MEGA_WIN_PRESET, cx, cy);
+    winVfx.playPreset(FREEZE_WIN_PRESET, cx, cy);
+    winVfx.playPreset(SHATTER_WIN_PRESET, cx, cy);
+
+    // Or use controller helpers:
+    winVfx.playFreeze(cx, cy);
+    winVfx.playShatter(cx, cy);
   });
 
   onDestroy(() => {
-    if (ticker && winVfx) {
-      ticker.remove((t) => {
-        winVfx.update(t.deltaMS);
-      });
+    if (ticker && onTick) {
+      ticker.remove(onTick);
     }
     if (app) {
       app.destroy(true, { children: true });
@@ -108,7 +132,7 @@ Inside `WinVFXController`:
 2. Create `WinVFXController(textureNames)`
 3. Add `winVfx.root` to stage
 4. On texture/asset selection change: `winVfx.setThemeFromTexture(name)`
-5. On win event: `winVfx.playSmallWin(...)` or `winVfx.playPreset(MEGA_WIN_PRESET, ...)`
+5. On win event: trigger one of `small`, `big`, `mega`, `freeze`, or `shatter`
 6. On each frame: `winVfx.update(deltaMs)`
 
 ## Notes

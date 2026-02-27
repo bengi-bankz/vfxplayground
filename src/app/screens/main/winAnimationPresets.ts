@@ -18,7 +18,7 @@ export type WinEmitterPreset = {
 };
 
 export type WinAnimationPreset = {
-  name: "small" | "big" | "mega";
+  name: "small" | "big" | "mega" | "freeze" | "shatter";
   intensity: number;
   phase: {
     anticipationMs: number;
@@ -232,8 +232,140 @@ export const MEGA_WIN_PRESET: WinAnimationPreset = {
   },
 };
 
+export const FREEZE_WIN_PRESET: WinAnimationPreset = {
+  name: "freeze",
+  intensity: 0.7,
+  phase: {
+    anticipationMs: 80,
+    impactMs: 90,
+    settleMs: 500,
+  },
+  flashPeakAlpha: 0.58,
+  rays: {
+    alpha: 0.48,
+    scaleX: 0.2,
+    scaleY: 1.25,
+    spinPerSecond: 0.08,
+  },
+  burst: {
+    count: 18,
+    speedMin: 1,
+    speedMax: 4,
+    scaleMin: 0.05,
+    scaleMax: 0.12,
+    lifeMinMs: 500,
+    lifeMaxMs: 1100,
+    drag: 0.992,
+    gravity: -0.005,
+    spinMin: -0.03,
+    spinMax: 0.03,
+    fade: true,
+    blendMode: "add",
+    alphaStart: 0.75,
+  },
+  spark: {
+    count: 12,
+    speedMin: 0.6,
+    speedMax: 2.2,
+    scaleMin: 0.03,
+    scaleMax: 0.08,
+    lifeMinMs: 600,
+    lifeMaxMs: 1200,
+    drag: 0.995,
+    gravity: -0.006,
+    spinMin: -0.02,
+    spinMax: 0.02,
+    fade: true,
+    blendMode: "add",
+    alphaStart: 0.7,
+  },
+  confetti: {
+    count: 6,
+    speedMin: 0.5,
+    speedMax: 2,
+    scaleMin: 0.04,
+    scaleMax: 0.09,
+    lifeMinMs: 700,
+    lifeMaxMs: 1300,
+    drag: 0.995,
+    gravity: 0.02,
+    spinMin: -0.03,
+    spinMax: 0.03,
+    fade: true,
+    blendMode: "normal",
+    alphaStart: 0.55,
+  },
+};
+
+export const SHATTER_WIN_PRESET: WinAnimationPreset = {
+  name: "shatter",
+  intensity: 1.9,
+  phase: {
+    anticipationMs: 40,
+    impactMs: 140,
+    settleMs: 260,
+  },
+  flashPeakAlpha: 0.82,
+  rays: {
+    alpha: 0.72,
+    scaleX: 0.26,
+    scaleY: 2.15,
+    spinPerSecond: 0.62,
+  },
+  burst: {
+    count: 52,
+    speedMin: 4,
+    speedMax: 16,
+    scaleMin: 0.09,
+    scaleMax: 0.26,
+    lifeMinMs: 300,
+    lifeMaxMs: 700,
+    drag: 0.95,
+    gravity: 0.04,
+    spinMin: -0.2,
+    spinMax: 0.2,
+    fade: true,
+    blendMode: "add",
+    alphaStart: 1,
+  },
+  spark: {
+    count: 26,
+    speedMin: 2,
+    speedMax: 8,
+    scaleMin: 0.05,
+    scaleMax: 0.15,
+    lifeMinMs: 220,
+    lifeMaxMs: 560,
+    drag: 0.9,
+    gravity: -0.005,
+    spinMin: -0.15,
+    spinMax: 0.15,
+    fade: true,
+    blendMode: "add",
+    alphaStart: 0.95,
+  },
+  confetti: {
+    count: 30,
+    speedMin: 2,
+    speedMax: 10,
+    scaleMin: 0.06,
+    scaleMax: 0.17,
+    lifeMinMs: 700,
+    lifeMaxMs: 1450,
+    drag: 0.98,
+    gravity: 0.16,
+    spinMin: -0.24,
+    spinMax: 0.24,
+    fade: true,
+    blendMode: "normal",
+    alphaStart: 1,
+  },
+};
+
 export const WIN_ANIMATION_PRESETS = {
   small: SMALL_WIN_PRESET,
   big: BIG_WIN_PRESET,
   mega: MEGA_WIN_PRESET,
+  freeze: FREEZE_WIN_PRESET,
+  shatter: SHATTER_WIN_PRESET,
 } as const;
